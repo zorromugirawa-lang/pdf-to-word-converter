@@ -1,10 +1,12 @@
 from flask import Flask, request, send_file, render_template_string
 from pdf2docx import Converter
 import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
-CONVERTED_FOLDER = 'converted'
+
+UPLOAD_FOLDER = '/tmp/uploads'
+CONVERTED_FOLDER = '/tmp/converted'
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
@@ -30,18 +32,19 @@ HTML = '''
             cursor: pointer;
         }
         button:hover { background: #1e3a8a; }
-        #status { margin-top: 20px; font-size: 16px; }
+        .limit { color: #666; font-size: 14px; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📄 PDF to Word Converter</h1>
-        <p>Konversi PDF ke Word dengan gambar & tabel</p>
+        <p>Konversi PDF ke Word dengan gambar & tabel (Vercel)</p>
         
         <form action="/convert" method="post" enctype="multipart/form-data">
             <input type="file" name="pdf" accept=".pdf" required><br><br>
             <button type="submit">🔄 Konversi ke Word</button>
         </form>
+        <p class="limit">⚠️ Maksimal ~10MB • Bisa agak lambat</p>
     </div>
 </body>
 </html>
@@ -54,27 +57,37 @@ def home():
 @app.route('/convert', methods=['POST'])
 def convert():
     if 'pdf' not in request.files:
-        return "Tidak ada file", 400
+        return "Tidak ada file PDF", 400
+    
     file = request.files['pdf']
     if file.filename == '':
         return "File tidak dipilih", 400
     if not file.filename.lower().endswith('.pdf'):
-        return "Hanya PDF yang diizinkan", 400
+        return "Hanya file PDF yang diizinkan", 400
 
-    pdf_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    filename = secure_filename(file.filename)
+    pdf_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(pdf_path)
 
-    docx_filename = file.filename.rsplit('.', 1)[0] + '.docx'
+    docx_filename = filename.rsplit('.', 1)[0] + '.docx'
     docx_path = os.path.join(CONVERTED_FOLDER, docx_filename)
 
     try:
         cv = Converter(pdf_path)
         cv.convert(docx_path)
         cv.close()
+
         return send_file(docx_path, as_attachment=True, download_name=docx_filename)
     except Exception as e:
         return f"Error: {str(e)}", 500
+    finally:
+        # Bersihkan file sementara
+        for path in [pdf_path, docx_path]:
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except:
+                    pass
 
 if __name__ == '__main__':
-    print("🚀 Server berjalan di http://127.0.0.1:5000")
     app.run(debug=True)
