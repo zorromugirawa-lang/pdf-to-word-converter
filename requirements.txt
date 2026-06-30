@@ -1,0 +1,8 @@
+pdf2docx
+PyMuPDF
+Pillow
+docx2pdf
+PyPDF2
+pytesseract
+pdf2image
+python-dotenv
