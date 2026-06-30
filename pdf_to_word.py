@@ -4,11 +4,25 @@ import pytesseract
 from PIL import Image
 from pdf2image import convert_from_path
 
-# Set the path to the Tesseract executable
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# Try to load python-dotenv if installed (useful for local development)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-# Specify the path to your PDF file
-pdf_path = 'path/to/your/pdf/file.pdf'
+# Set the path to the Tesseract executable from Environment Variables
+# Fallback to the default Windows path if not set
+tesseract_cmd = os.getenv('TESSERACT_CMD', r'C:\Program Files\Tesseract-OCR\tesseract.exe')
+pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+
+# Specify the path to your PDF file from Environment Variables
+pdf_path = os.getenv('PDF_PATH', 'path/to/your/pdf/file.pdf')
+
+if not os.path.exists(pdf_path) and pdf_path != 'path/to/your/pdf/file.pdf':
+    print(f"Error: PDF file not found at {pdf_path}")
+    print("Please check your PDF_PATH environment variable.")
+    exit(1)
 
 # Create a directory to store the extracted images
 images_dir = 'extracted_images'
