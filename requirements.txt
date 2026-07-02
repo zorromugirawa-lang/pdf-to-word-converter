@@ -1,7 +1,2 @@
-pdf2docx
 PyMuPDF
 Pillow
-PyPDF2
-pytesseract
-pdf2image
-python-dotenv
