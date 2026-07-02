@@ -19,7 +19,7 @@ COPY requirements.txt /tmp/
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt --break-system-packages
 
 # Create a symlink so 'python' command points to 'python3'
-RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN ln -sf /usr/bin/python3 /usr/bin/python
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite

@@ -1,6 +1,6 @@
 <?php
 // Load API Secret from environment or set directly here
-$convertApiSecret = getenv('CONVERT_API_SECRET') ?: 'PqUKqCZrll0cePNVVHxA0GtiNNDEuYls';
+$convertApiSecret = getenv('CONVERT_API_SECRET');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
     $file = $_FILES['pdf_file'];

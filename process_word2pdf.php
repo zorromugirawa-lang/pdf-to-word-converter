@@ -1,4 +1,6 @@
 <?php
+$convertApiSecret = getenv('CONVERT_API_SECRET');
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['word_file'])) {
     $file = $_FILES['word_file'];
     
@@ -23,9 +25,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['word_file'])) {
     // Move uploaded file
     if (move_uploaded_file($file['tmp_name'], $wordPath)) {
         
-        // Execute the python converter script
-        $command = escapeshellcmd("python convert_word2pdf.py " . escapeshellarg($wordPath) . " " . escapeshellarg($pdfPath));
-        $output = shell_exec($command);
+        // Execute conversion using ConvertAPI via cURL
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://v2.convertapi.com/convert/' . $fileExt . '/to/pdf?Secret=' . $convertApiSecret);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        
+        $cfile = new CURLFile($wordPath, mime_content_type($wordPath), $originalName);
+        $data = array('File' => $cfile, 'StoreFile' => 'true');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        
+        // Timeout for conversion
+        curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+        
+        $result = curl_exec($ch);
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        $output = '';
+        if ($httpcode == 200) {
+            $json = json_decode($result, true);
+            if (isset($json['Files'][0]['Url'])) {
+                $fileUrl = $json['Files'][0]['Url'];
+                // Download the converted file
+                $fileContent = file_get_contents($fileUrl);
+                if ($fileContent !== false) {
+                    file_put_contents($pdfPath, $fileContent);
+                } else {
+                    $output = "Failed to download the converted file from API.";
+                }
+            } else {
+                $output = "Invalid response format from API.";
+            }
+        } else {
+             $output = "API Error Code: " . $httpcode . " - " . $result;
+        }
         
         // Check if output file was created
         if (file_exists($pdfPath)) {
@@ -39,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['word_file'])) {
             header('Pragma: public');
             header('Content-Length: ' . filesize($pdfPath));
             
-            // Clean output buffer
+            // Clean output buffer to ensure no extra characters
             ob_clean();
             flush();
             
